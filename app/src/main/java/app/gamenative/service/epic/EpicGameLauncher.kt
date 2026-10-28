@@ -81,9 +81,11 @@ object EpicGameLauncher {
             // Epic Portal flag
             params.add("-EpicPortal")
 
-            // User information parameters
-            val displayName = (gameToken?.displayName ?: storedCredentials?.displayName)?.takeIf { it.isNotBlank() } ?: "EpicUser"
-            val accountId = gameToken?.accountId ?: storedCredentials?.accountId ?: "0"
+            // User information parameters. Offline, gameToken is null so the persisted
+            // credential value is used; blank is treated as absent and the placeholder is a
+            // last resort, keeping the real accountId for the correct per-user save folder.
+            val displayName = resolveEpicUserValue(gameToken?.displayName, storedCredentials?.displayName, "EpicUser")
+            val accountId = resolveEpicUserValue(gameToken?.accountId, storedCredentials?.accountId, "0")
 
             params.add("-epicusername=$displayName")
             params.add("-epicuserid=$accountId")
@@ -129,6 +131,16 @@ object EpicGameLauncher {
             Timber.e(e, "Failed to build launch parameters")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Resolve an Epic user value, preferring the token value, then the persisted value,
+     * treating blank as absent. [fallback] is used only when neither has a usable value.
+     */
+    internal fun resolveEpicUserValue(tokenValue: String?, storedValue: String?, fallback: String): String {
+        return tokenValue?.takeIf { it.isNotBlank() }
+            ?: storedValue?.takeIf { it.isNotBlank() }
+            ?: fallback
     }
 
     /**
