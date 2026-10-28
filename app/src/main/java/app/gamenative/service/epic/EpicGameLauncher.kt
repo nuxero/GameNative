@@ -81,14 +81,9 @@ object EpicGameLauncher {
             // Epic Portal flag
             params.add("-EpicPortal")
 
-            // User information parameters.
-            // Offline, gameToken is null and we fall back to the locally-persisted credentials
-            // (read from disk with no network call). The real accountId must win so the game
-            // resolves the same per-user save folder it uses online; some titles (e.g. Astral
-            // Ascent) use -epicuserid as the save parent folder, and a blank/missing id makes
-            // them read/write under a bogus "0" folder. Guard against blank (not just null)
-            // stored values so an empty id never slips through, and only use "0" when there are
-            // genuinely no stored credentials at all.
+            // User information parameters. Offline, gameToken is null so the persisted
+            // credential value is used; blank is treated as absent and the placeholder is a
+            // last resort, keeping the real accountId for the correct per-user save folder.
             val displayName = resolveEpicUserValue(gameToken?.displayName, storedCredentials?.displayName, "EpicUser")
             val accountId = resolveEpicUserValue(gameToken?.accountId, storedCredentials?.accountId, "0")
 
@@ -139,10 +134,8 @@ object EpicGameLauncher {
     }
 
     /**
-     * Resolve an Epic user command-line value (account id / display name) by preferring the
-     * online game token value, then the locally-persisted credential value, treating blank
-     * strings as absent. The [fallback] is only used when neither source has a usable value,
-     * so offline launches keep using the real stored id rather than a bogus placeholder.
+     * Resolve an Epic user value, preferring the token value, then the persisted value,
+     * treating blank as absent. [fallback] is used only when neither has a usable value.
      */
     internal fun resolveEpicUserValue(tokenValue: String?, storedValue: String?, fallback: String): String {
         return tokenValue?.takeIf { it.isNotBlank() }
