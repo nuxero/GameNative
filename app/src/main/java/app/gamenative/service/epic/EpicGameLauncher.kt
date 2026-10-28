@@ -81,9 +81,16 @@ object EpicGameLauncher {
             // Epic Portal flag
             params.add("-EpicPortal")
 
-            // User information parameters
-            val displayName = (gameToken?.displayName ?: storedCredentials?.displayName)?.takeIf { it.isNotBlank() } ?: "EpicUser"
-            val accountId = gameToken?.accountId ?: storedCredentials?.accountId ?: "0"
+            // User information parameters.
+            // Offline, gameToken is null and we fall back to the locally-persisted credentials
+            // (read from disk with no network call). The real accountId must win so the game
+            // resolves the same per-user save folder it uses online; some titles (e.g. Astral
+            // Ascent) use -epicuserid as the save parent folder, and a blank/missing id makes
+            // them read/write under a bogus "0" folder. Guard against blank (not just null)
+            // stored values so an empty id never slips through, and only use "0" when there are
+            // genuinely no stored credentials at all.
+            val displayName = resolveEpicUserValue(gameToken?.displayName, storedCredentials?.displayName, "EpicUser")
+            val accountId = resolveEpicUserValue(gameToken?.accountId, storedCredentials?.accountId, "0")
 
             params.add("-epicusername=$displayName")
             params.add("-epicuserid=$accountId")
@@ -129,6 +136,18 @@ object EpicGameLauncher {
             Timber.e(e, "Failed to build launch parameters")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Resolve an Epic user command-line value (account id / display name) by preferring the
+     * online game token value, then the locally-persisted credential value, treating blank
+     * strings as absent. The [fallback] is only used when neither source has a usable value,
+     * so offline launches keep using the real stored id rather than a bogus placeholder.
+     */
+    internal fun resolveEpicUserValue(tokenValue: String?, storedValue: String?, fallback: String): String {
+        return tokenValue?.takeIf { it.isNotBlank() }
+            ?: storedValue?.takeIf { it.isNotBlank() }
+            ?: fallback
     }
 
     /**
